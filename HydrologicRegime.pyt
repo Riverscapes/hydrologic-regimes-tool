@@ -46,6 +46,8 @@ class HydrologicRegimeTool(object):
             direction = "Input",
             multiValue = False)
 
+
+
         param3 = arcpy.Parameter(
             displayName = "Output Files Folder",
             name = "Output Files",
@@ -58,10 +60,11 @@ class HydrologicRegimeTool(object):
             displayName = "Testing",
             name = "Testing",
             datatype = "GPBoolean",
+            parameterType = Optional
             direction = "Input",
             multiValue = False)
 
-        params = [param0, param1]
+        params = [param0, param1, param2, param3, param4]
         return params
 
     def isLicensed(self):
@@ -82,5 +85,8 @@ class HydrologicRegimeTool(object):
     def execute(self, parameters, messages):
         """The source code of the tool."""
         HydrologicRegime.main(parameters[0].valueAsText,
-            parameters[1].valueAsText)
+            parameters[1].valueAsText,
+            parameters[2].valueAsText,
+            parameters[3].valueAsText,
+            parameters[4].valueAsText)
         return
