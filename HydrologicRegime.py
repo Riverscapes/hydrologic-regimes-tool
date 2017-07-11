@@ -36,10 +36,10 @@ def main(streamNetwork,     # Path to the stream network file
     else:
         clippedStreamNetwork = streamNetwork
 
-    reachArray = makeReaches(clippedStreamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, testing)
+    reachArray = makeReaches(clippedStreamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData, testing)
 
 
-def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, testing):
+def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData, testing):
     reaches = []
     numReaches = int(arcpy.GetCount_management(streamNetwork).getOutput(0))
     numReachesString = str(numReaches)
@@ -51,7 +51,7 @@ def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTe
         for i in range(10):
             arcpy.AddMessage("Creating Reach " + str(i+1) + " out of 10")
             row = polylineCursor.next()
-            classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp)
+            classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData)
 
             reach = Reach(row[0], classification)
             reaches.append(reach)
@@ -70,7 +70,53 @@ def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTe
     return reaches
 
 
-def findClassification(point, dem, marchPrecip, janTemp, snowDepth, minWinterTemp):
+def findClassification(point, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData):
     #TODO: Write findClassification()
-    
+    marchPrecipNum = findMarchPrecip(point, marchPrecip)
+    if marchPrecipNum >= 261.7:
+        if findElevation(point, dem) < 618:
+            return "Rainfall"
+        else:
+            return "Rain-Snow"
+    else:
+        if marchPrecipNum < 185.6:
+            if findJanTemp(point, janTemp) >= -5:
+                if findSnowDepth(point, snowDepth) < 1741:
+                    return "Groundwater"
+                else:
+                    return "Snow-Rain"
+            else:
+                if findMinWinterTemp(point, minWinterTemp) < -7.7:
+                    return "Ultra-Snowmelt"
+                else:
+                    return "Snowmelt"
+        else:
+            return "Snow&Rain"
+
+
+def findMarchPrecip(point, marchPrecip):
+    #TODO: Write findMarchPrecip()
+    return 1
+
+
+def findElevation(point, dem):
+    #TODO: Write findElevation()
+    return 1
+
+
+def findJanTemp(point, janTemp):
+    #TODO: Write findJanTemp()
+    return 1
+
+
+def findSnowDepth(point, snowDepth):
+    #TODO: Write findSnowDepth()
+    return 1
+
+
+def findMinWinterTemp(point, minWinterTemp):
+    #TODO: Write findMinWinterTemp()
+    return 1
+
+
     return 1
