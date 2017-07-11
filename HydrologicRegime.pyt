@@ -30,7 +30,38 @@ class HydrologicRegimeTool(object):
             direction = "Input",
             multiValue = False)
 
-        params = [param0]
+        param1 = arcpy.Parameter(
+            displayName = "Stream Network",
+            name = "streamNetwork",
+            datatype = "DEFeatureClass",
+            parameterType = "Required",
+            direction = "Input",
+            multiValue = False)
+
+        param2 = arcpy.Parameter(
+            displayName = "Clipping Region",
+            name = "Clipping Region",
+            datatype = "DEFeatureClass",
+            parameterType = "Optional",
+            direction = "Input",
+            multiValue = False)
+
+        param3 = arcpy.Parameter(
+            displayName = "Output Files Folder",
+            name = "Output Files",
+            datatype = "DEFolder",
+            parameterType = "Required",
+            direction = "Input",
+            multiValue = False)
+
+        param4 = arcpy.Parameter(
+            displayName = "Testing",
+            name = "Testing",
+            datatype = "GPBoolean",
+            direction = "Input",
+            multiValue = False)
+
+        params = [param0, param1]
         return params
 
     def isLicensed(self):
@@ -50,4 +81,6 @@ class HydrologicRegimeTool(object):
 
     def execute(self, parameters, messages):
         """The source code of the tool."""
+        HydrologicRegime.main(parameters[0].valueAsText,
+            parameters[1].valueAsText)
         return
