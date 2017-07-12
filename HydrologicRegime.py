@@ -71,7 +71,6 @@ def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTe
 
 
 def findClassification(point, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData):
-    #TODO: Write findClassification()
     marchPrecipNum = findMarchPrecip(point, marchPrecip)
     if marchPrecipNum >= 261.7:
         if findElevation(point, dem) < 618:
