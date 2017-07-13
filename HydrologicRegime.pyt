@@ -87,6 +87,14 @@ class HydrologicRegimeTool(object):
             multiValue = False)
 
         param8 = arcpy.Parameter(
+            displayName = "Output Name",
+            name = "outputName",
+            datatype = "GPString",
+            parameterType = "Required",
+            direction = "Input",
+            multiValue = False)
+
+        param9 = arcpy.Parameter(
             displayName = "Testing",
             name = "Testing",
             datatype = "GPBoolean",
@@ -96,7 +104,7 @@ class HydrologicRegimeTool(object):
 
 
 
-        params = [param0, param1, param2, param3, param4, param5, param6, param7, param8]
+        params = [param0, param1, param2, param3, param4, param5, param6, param7, param8, param9]
         return params
 
     def isLicensed(self):
@@ -124,5 +132,6 @@ class HydrologicRegimeTool(object):
             parameters[5].valueAsText,
             parameters[6].valueAsText,
             parameters[7].valueAsText,
-            parameters[8].valueAsText)
+            parameters[8].valueAsText,
+            parameters[9].valueAsText)
         return

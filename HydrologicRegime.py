@@ -12,6 +12,7 @@ def main(streamNetwork,     # Path to the stream network file
         minWinterTemp,      # Path to file with minimum winter temperature
         clippingRegion,     # Path to polygon to clip stream network to
         outputFolder,       # Path to where we want to put our output
+        outputName,         # Name to call output files
         testing):           # Allows the user to run a limited run
     arcpy.env.overwriteOutput = True
     arcpy.CheckOutExtension("Spatial")  # We'll be using a bunch of spatial analysis tools
@@ -25,9 +26,9 @@ def main(streamNetwork,     # Path to the stream network file
     tempData = outputFolder + "\\temporaryData"
 
     """Creates our output folder, where we'll put our final results"""
-    if not os.path.exists(outputFolder+"\outputData"):
-        os.makedirs(outputFolder+"\outputData")
-    outputDataPath = outputFolder+"\outputData"
+    if not os.path.exists(outputFolder+"\HydrologicRegime"):
+        os.makedirs(outputFolder+"\HydrologicRegime")
+    outputDataPath = outputFolder+"\HydrologicRegime"
 
     """Clips our stream network to a clipping region, if necessary"""
     if clippingRegion is not None:
@@ -38,6 +39,8 @@ def main(streamNetwork,     # Path to the stream network file
         clippedStreamNetwork = streamNetwork
 
     reachArray = makeReaches(clippedStreamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData, testing)
+
+    writeOutput(reachArray, outputDataPath, arcpy.Describe(clippedStreamNetwork).spatialReference, outputName)
 
 
 def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData, testing):
@@ -52,8 +55,7 @@ def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTe
         for i in range(10):
             arcpy.AddMessage("Creating Reach " + str(i+1) + " out of 10")
             row = polylineCursor.next()
-            # classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData)
-            classification = "Something"
+            classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData)
 
             reach = ClassificationReach(row[0], classification)
             reaches.append(reach)
@@ -61,10 +63,10 @@ def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTe
         i = 0 # just used for displaying how far through the program it is
         for row in polylineCursor:
             i += 1
-            arcpy.AddMessage("Creating Reach " + str(i) + " out of " + numReachesString
+            if i%5 == 0:
+                arcpy.AddMessage("Creating Reach " + str(i) + " out of " + numReachesString
                              + " (" + str((float(i)/float(numReaches))*100) + "% complete)")
             classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData)
-            arcpy.AddMessage(classification)
             reach = ClassificationReach(row[0], classification)
             reaches.append(reach)
 
@@ -78,14 +80,16 @@ def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTe
 
 def findClassification(point, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData):
     arcpy.env.workspace = tempData
-    pointFile = arcpy.CreateFeatureclass_management(tempData, "point.shp", "POINT", "", "DISABLED", "DISABLED")
+    sr = arcpy.Describe(dem).spatialReference
+    pointFile = arcpy.CreateFeatureclass_management(tempData, "point.shp", "POINT", "", "DISABLED", "DISABLED", sr)
     cursor = arcpy.da.InsertCursor(pointFile, ["SHAPE@"])
     cursor.insertRow([point])
     del cursor
-    arcpy.AddMessage("March Precip: " + str(findRasterValueAtPoint(pointFile, marchPrecip, tempData)))
-    arcpy.AddMessage("Elevation: " + str(findRasterValueAtPoint(pointFile, dem, tempData)))
-    arcpy.AddMessage("Min Winter Temp: " + str(findRasterValueAtPoint(pointFile, minWinterTemp, tempData)))
-    arcpy.AddMessage("Jan Temp: " + str(findRasterValueAtPoint(pointFile, janTemp, tempData)))
+    #arcpy.AddMessage("March Precip: " + str(findRasterValueAtPoint(pointFile, marchPrecip, tempData)))
+    #arcpy.AddMessage("Elevation: " + str(findRasterValueAtPoint(pointFile, dem, tempData)))
+    #arcpy.AddMessage("Min Winter Temp: " + str(findRasterValueAtPoint(pointFile, minWinterTemp, tempData)))
+    #arcpy.AddMessage("Jan Temp: " + str(findRasterValueAtPoint(pointFile, janTemp, tempData)))
+    #arcpy.AddMessage("________________________________________________________________________")
 
     marchPrecipNum = findRasterValueAtPoint(pointFile, marchPrecip, tempData)
 
@@ -97,10 +101,14 @@ def findClassification(point, dem, marchPrecip, janTemp, snowDepth, minWinterTem
     else:
         if marchPrecipNum < 185.6:
             if findRasterValueAtPoint(pointFile, janTemp, tempData) >= -5: # Finds temp in January, branches based on that
+                """
                 if findSnowDepth(pointFile, snowDepth, tempData) < 1741: # We still can't find good data for snow depth
                     return "Groundwater"
                 else:
                     return "Snow-Rain"
+                """
+                return "Groundwater or Snow-Rain"
+
             else:
                 if findRasterValueAtPoint(pointFile, minWinterTemp, tempData) < -7.7: # Finds winter temperature, branches based on that
                     return "Ultra-Snowmelt"
@@ -112,6 +120,7 @@ def findClassification(point, dem, marchPrecip, janTemp, snowDepth, minWinterTem
 
 def findRasterValueAtPoint(point, raster, tempData):
     valuePoint = tempData + "\\rasterPoint.shp"
+    sr = arcpy.Describe(raster).SpatialReference
 
     arcpy.sa.ExtractValuesToPoints(point, raster, valuePoint)
     searchCursor = arcpy.da.SearchCursor(valuePoint, "RASTERVALU")
@@ -136,3 +145,19 @@ def findPolygonValueAtPoint(point, polygon, fieldName, tempData):
 def findSnowDepth(point, snowDepth, tempData):
     #TODO: Write findSnowDepth()
     return 1
+
+def writeOutput(reachArray, outputDataPath, spatialReference, outputName):
+    arcpy.env.workspace = outputDataPath
+
+    outputShape = arcpy.CreateFeatureclass_management(outputDataPath, outputName+ ".shp", "POLYLINE", "", "DISABLED", "DISABLED", spatialReference)
+    arcpy.AddField_management(outputShape, "Regime", "TEXT")
+
+    insertCursor = arcpy.da.InsertCursor(outputShape, ["SHAPE@", "Regime"])
+    for reach in reachArray:
+        insertCursor.insertRow([reach.polyline, reach.classification])
+    del insertCursor
+
+    tempLayer = outputDataPath + "\\" +  outputName+ "_lyr"
+    outputLayer = outputDataPath + "\\" +  outputName+ ".lyr"
+    arcpy.MakeFeatureLayer_management(outputShape, tempLayer)
+    arcpy.SaveToLayerFile_management(tempLayer, outputLayer)
