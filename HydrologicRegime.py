@@ -1,7 +1,7 @@
 import arcpy
 import os
 
-import Reach
+from ClassificationReach import ClassificationReach
 
 
 def main(streamNetwork,     # Path to the stream network file
@@ -14,6 +14,7 @@ def main(streamNetwork,     # Path to the stream network file
         outputFolder,       # Path to where we want to put our output
         testing):           # Allows the user to run a limited run
     arcpy.env.overwriteOutput = True
+    arcpy.CheckOutExtension("Spatial")  # We'll be using a bunch of spatial analysis tools
 
     if testing:
         arcpy.AddMessage("TESTING")
@@ -51,9 +52,10 @@ def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTe
         for i in range(10):
             arcpy.AddMessage("Creating Reach " + str(i+1) + " out of 10")
             row = polylineCursor.next()
-            classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData)
+            # classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData)
+            classification = "Something"
 
-            reach = Reach(row[0], classification)
+            reach = ClassificationReach(row[0], classification)
             reaches.append(reach)
     else:
         i = 0 # just used for displaying how far through the program it is
@@ -61,6 +63,10 @@ def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTe
             i += 1
             arcpy.AddMessage("Creating Reach " + str(i) + " out of " + numReachesString
                              + " (" + str((float(i)/float(numReaches))*100) + "% complete)")
+            classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData)
+            arcpy.AddMessage(classification)
+            reach = ClassificationReach(row[0], classification)
+            reaches.append(reach)
 
     del row
     del polylineCursor
@@ -71,21 +77,32 @@ def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTe
 
 
 def findClassification(point, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData):
-    marchPrecipNum = findMarchPrecip(point, marchPrecip)
+    arcpy.env.workspace = tempData
+    pointFile = arcpy.CreateFeatureclass_management(tempData, "point.shp", "POINT", "", "DISABLED", "DISABLED")
+    cursor = arcpy.da.InsertCursor(pointFile, ["SHAPE@"])
+    cursor.insertRow([point])
+    del cursor
+    arcpy.AddMessage("March Precip: " + str(findRasterValueAtPoint(pointFile, marchPrecip, tempData)))
+    arcpy.AddMessage("Elevation: " + str(findRasterValueAtPoint(pointFile, dem, tempData)))
+    arcpy.AddMessage("Min Winter Temp: " + str(findRasterValueAtPoint(pointFile, minWinterTemp, tempData)))
+    arcpy.AddMessage("Jan Temp: " + str(findRasterValueAtPoint(pointFile, janTemp, tempData)))
+
+    marchPrecipNum = findRasterValueAtPoint(pointFile, marchPrecip, tempData)
+
     if marchPrecipNum >= 261.7:
-        if findElevation(point, dem) < 618:
+        if findRasterValueAtPoint(pointFile, dem, tempData) < 618: # Finds elevation, branches
             return "Rainfall"
         else:
             return "Rain-Snow"
     else:
         if marchPrecipNum < 185.6:
-            if findJanTemp(point, janTemp) >= -5:
-                if findSnowDepth(point, snowDepth) < 1741:
+            if findRasterValueAtPoint(pointFile, janTemp, tempData) >= -5: # Finds temp in January, branches based on that
+                if findSnowDepth(pointFile, snowDepth, tempData) < 1741: # We still can't find good data for snow depth
                     return "Groundwater"
                 else:
                     return "Snow-Rain"
             else:
-                if findMinWinterTemp(point, minWinterTemp) < -7.7:
+                if findRasterValueAtPoint(pointFile, minWinterTemp, tempData) < -7.7: # Finds winter temperature, branches based on that
                     return "Ultra-Snowmelt"
                 else:
                     return "Snowmelt"
@@ -93,29 +110,29 @@ def findClassification(point, dem, marchPrecip, janTemp, snowDepth, minWinterTem
             return "Snow&Rain"
 
 
-def findMarchPrecip(point, marchPrecip):
-    #TODO: Write findMarchPrecip()
-    return 1
+def findRasterValueAtPoint(point, raster, tempData):
+    valuePoint = tempData + "\\rasterPoint.shp"
+
+    arcpy.sa.ExtractValuesToPoints(point, raster, valuePoint)
+    searchCursor = arcpy.da.SearchCursor(valuePoint, "RASTERVALU")
+    row = searchCursor.next()
+    value = row[0]
+
+    del searchCursor
+    del row
+    return value
 
 
-def findElevation(point, dem):
-    #TODO: Write findElevation()
-    return 1
+def findPolygonValueAtPoint(point, polygon, fieldName, tempData):
+    valuePoint = tempData + "\polygonPoint.shp"
+    arcpy.Intersect_analysis([point, polygon], valuePoint)
+    searchCursor = arcpy.da.SearchCursor(valuePoint, fieldName)
+    row = searchCursor.next()
+    value  = row[0]
+    del row, searchCursor
+    return value
 
 
-def findJanTemp(point, janTemp):
-    #TODO: Write findJanTemp()
-    return 1
-
-
-def findSnowDepth(point, snowDepth):
+def findSnowDepth(point, snowDepth, tempData):
     #TODO: Write findSnowDepth()
-    return 1
-
-
-def findMinWinterTemp(point, minWinterTemp):
-    #TODO: Write findMinWinterTemp()
-    return 1
-
-
     return 1

@@ -23,14 +23,6 @@ class HydrologicRegimeTool(object):
     def getParameterInfo(self):
         """Define parameter definitions"""
         param0 = arcpy.Parameter(
-            displayName = "DEM",
-            name = "DEM",
-            datatype = "DERasterDataset",
-            parameterType = "Required",
-            direction = "Input",
-            multiValue = False)
-
-        param1 = arcpy.Parameter(
             displayName = "Stream Network",
             name = "streamNetwork",
             datatype = "DEFeatureClass",
@@ -38,7 +30,47 @@ class HydrologicRegimeTool(object):
             direction = "Input",
             multiValue = False)
 
+        param1 = arcpy.Parameter(
+            displayName = "DEM",
+            name = "DEM",
+            datatype = "DERasterDataset",
+            parameterType = "Required",
+            direction = "Input",
+            multiValue = False)
+
         param2 = arcpy.Parameter(
+            displayName = "March Precipitation",
+            name = "marchPrecip",
+            datatype = "DERasterDataset",
+            parameterType = "Required",
+            direction = "Input",
+            multiValue = False)
+
+        param3 = arcpy.Parameter(
+            displayName = "January Temperature",
+            name = "janTemp",
+            datatype = "DERasterDataset",
+            parameterType = "Required",
+            direction = "Input",
+            multiValue = False)
+
+        param4 = arcpy.Parameter(
+            displayName = "Snow Depth",
+            name = "snowDepth",
+            datatype = "DERasterDataset",
+            parameterType = "Optional",
+            direction = "Input",
+            multiValue = False)
+
+        param5 = arcpy.Parameter(
+            displayName = "Min Winter Temp",
+            name = "minWinterTemp",
+            datatype = "DERasterDataset",
+            parameterType = "Required",
+            direction = "Input",
+            multiValue = False)
+
+        param6 = arcpy.Parameter(
             displayName = "Clipping Region",
             name = "Clipping Region",
             datatype = "DEFeatureClass",
@@ -46,9 +78,7 @@ class HydrologicRegimeTool(object):
             direction = "Input",
             multiValue = False)
 
-
-
-        param3 = arcpy.Parameter(
+        param7 = arcpy.Parameter(
             displayName = "Output Files Folder",
             name = "Output Files",
             datatype = "DEFolder",
@@ -56,15 +86,17 @@ class HydrologicRegimeTool(object):
             direction = "Input",
             multiValue = False)
 
-        param4 = arcpy.Parameter(
+        param8 = arcpy.Parameter(
             displayName = "Testing",
             name = "Testing",
             datatype = "GPBoolean",
-            parameterType = Optional
+            parameterType = "Optional",
             direction = "Input",
             multiValue = False)
 
-        params = [param0, param1, param2, param3, param4]
+
+
+        params = [param0, param1, param2, param3, param4, param5, param6, param7, param8]
         return params
 
     def isLicensed(self):
@@ -88,5 +120,9 @@ class HydrologicRegimeTool(object):
             parameters[1].valueAsText,
             parameters[2].valueAsText,
             parameters[3].valueAsText,
-            parameters[4].valueAsText)
+            parameters[4].valueAsText,
+            parameters[5].valueAsText,
+            parameters[6].valueAsText,
+            parameters[7].valueAsText,
+            parameters[8].valueAsText)
         return
