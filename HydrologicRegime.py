@@ -50,12 +50,17 @@ def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTe
     arcpy.AddMessage("Reaches to calculate: " + numReachesString)
     arcpy.AddMessage("Creating Reach Array...")
 
+    sr = arcpy.Describe(streamNetwork).spatialReference
+
+    marchPrecipTextFile = open(tempData + "\marchPrecip.txt", 'w')
+    marchPrecipTextFileGreater = open(tempData + "\marchPrecipGreater.txt", 'w')
+
     polylineCursor = arcpy.da.SearchCursor(streamNetwork, ['SHAPE@'])
     if testing:
         for i in range(10):
             arcpy.AddMessage("Creating Reach " + str(i+1) + " out of 10")
             row = polylineCursor.next()
-            classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData)
+            classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData, sr, marchPrecipTextFile, marchPrecipTextFileGreater, testing)
 
             reach = ClassificationReach(row[0], classification)
             reaches.append(reach)
@@ -63,12 +68,13 @@ def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTe
         i = 0 # just used for displaying how far through the program it is
         for row in polylineCursor:
             i += 1
-            if i%5 == 0:
+            if i%100 == 0:
                 arcpy.AddMessage("Creating Reach " + str(i) + " out of " + numReachesString
                              + " (" + str((float(i)/float(numReaches))*100) + "% complete)")
-            classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData)
+            classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData, sr, marchPrecipTextFile, marchPrecipTextFileGreater, testing)
             reach = ClassificationReach(row[0], classification)
             reaches.append(reach)
+        marchPrecipTextFile.close()
 
     del row
     del polylineCursor
@@ -78,20 +84,25 @@ def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTe
     return reaches
 
 
-def findClassification(point, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData):
+def findClassification(point, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData, sr, txtFile, txtFileTwo, testing):
     arcpy.env.workspace = tempData
-    sr = arcpy.Describe(dem).spatialReference
     pointFile = arcpy.CreateFeatureclass_management(tempData, "point.shp", "POINT", "", "DISABLED", "DISABLED", sr)
     cursor = arcpy.da.InsertCursor(pointFile, ["SHAPE@"])
     cursor.insertRow([point])
     del cursor
-    #arcpy.AddMessage("March Precip: " + str(findRasterValueAtPoint(pointFile, marchPrecip, tempData)))
-    #arcpy.AddMessage("Elevation: " + str(findRasterValueAtPoint(pointFile, dem, tempData)))
-    #arcpy.AddMessage("Min Winter Temp: " + str(findRasterValueAtPoint(pointFile, minWinterTemp, tempData)))
-    #arcpy.AddMessage("Jan Temp: " + str(findRasterValueAtPoint(pointFile, janTemp, tempData)))
-    #arcpy.AddMessage("________________________________________________________________________")
+
+    if testing:
+        arcpy.AddMessage("March Precip: " + str(findRasterValueAtPoint(pointFile, marchPrecip, tempData)))
+        arcpy.AddMessage("Elevation: " + str(findRasterValueAtPoint(pointFile, dem, tempData)))
+        arcpy.AddMessage("Min Winter Temp: " + str(findRasterValueAtPoint(pointFile, minWinterTemp, tempData)))
+        arcpy.AddMessage("Jan Temp: " + str(findRasterValueAtPoint(pointFile, janTemp, tempData)))
+        arcpy.AddMessage("________________________________________________________________________")
 
     marchPrecipNum = findRasterValueAtPoint(pointFile, marchPrecip, tempData)
+
+    txtFile.write(str(marchPrecipNum) + "\n")
+    if marchPrecipNum >= 261.7:
+        txtFileTwo.write(str(marchPrecipNum) + "\n")
 
     if marchPrecipNum >= 261.7:
         if findRasterValueAtPoint(pointFile, dem, tempData) < 618: # Finds elevation, branches
