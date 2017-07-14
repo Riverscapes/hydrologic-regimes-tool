@@ -52,15 +52,15 @@ def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTe
 
     sr = arcpy.Describe(streamNetwork).spatialReference
 
-    marchPrecipTextFile = open(tempData + "\marchPrecip.txt", 'w')
-    marchPrecipTextFileGreater = open(tempData + "\marchPrecipGreater.txt", 'w')
+    fileOne = open(tempData + "\marchPrecip.txt", 'w')
+    fileTwo = open(tempData + "\marchPrecipGreater.txt", 'w')
 
     polylineCursor = arcpy.da.SearchCursor(streamNetwork, ['SHAPE@'])
     if testing:
         for i in range(10):
             arcpy.AddMessage("Creating Reach " + str(i+1) + " out of 10")
             row = polylineCursor.next()
-            classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData, sr, marchPrecipTextFile, marchPrecipTextFileGreater, testing)
+            classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData, sr, fileOne, fileTwo, testing)
 
             reach = ClassificationReach(row[0], classification)
             reaches.append(reach)
@@ -71,10 +71,12 @@ def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTe
             if i%100 == 0:
                 arcpy.AddMessage("Creating Reach " + str(i) + " out of " + numReachesString
                              + " (" + str((float(i)/float(numReaches))*100) + "% complete)")
-            classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData, sr, marchPrecipTextFile, marchPrecipTextFileGreater, testing)
+            classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData, sr, fileOne, fileTwo, testing)
             reach = ClassificationReach(row[0], classification)
             reaches.append(reach)
-        marchPrecipTextFile.close()
+
+    fileOne.close()
+    fileTwo.close()
 
     del row
     del polylineCursor
