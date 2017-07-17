@@ -128,7 +128,7 @@ def findClassification(point, dem, marchPrecip, janTemp, snowDepth, minWinterTem
                 else:
                     return "Snowmelt"
         else:
-            return "Snow&Rain"
+            return "Snow and Rain"
 
 
 def findRasterValueAtPoint(point, raster, tempData):
