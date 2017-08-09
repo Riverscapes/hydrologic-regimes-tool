@@ -114,13 +114,11 @@ def findClassification(point, dem, marchPrecip, janTemp, snowDepth, minWinterTem
     else:
         if marchPrecipNum < 185.6:
             if findRasterValueAtPoint(pointFile, janTemp, tempData) >= -5: # Finds temp in January, branches based on that
+                #return "Groundwater or Snow-Rain"
                 if findRasterValueAtPoint(pointFile, snowDepth, tempData) < 1741: # We still can't find good data for snow depth
                     return "Groundwater"
                 else:
                     return "Snow-Rain"
-                """
-                return "Groundwater or Snow-Rain"
-                """
             else:
                 if findRasterValueAtPoint(pointFile, minWinterTemp, tempData) < -7.7: # Finds winter temperature, branches based on that
                     return "Ultra-Snowmelt"
@@ -128,40 +126,6 @@ def findClassification(point, dem, marchPrecip, janTemp, snowDepth, minWinterTem
                     return "Snowmelt"
         else:
             return "Snow and Rain"
-    """    
-    elevation = findRasterValueAtPoint(pointFile, dem, tempData)
-    if elevation > 2293:
-        return "Snowmelt"
-    else:
-        if elevation > 1126:
-            if findRasterValueAtPoint(pointFile, drainageArea, tempData) > 2144
-                if findPolygonValueAtPoint(pointFile, geoTypes, tempData) == "VOLCANIC"
-                    return "Groundwater"
-                else:
-                    return "High-volume snowmelt and rain"
-            else:
-                return "Low-volume snowmelt and rain"
-        else:
-            if findRasterValueAtPoint(pointFile, janPrecip, tempData) > 28:
-                return "Winter Storm"
-            else:
-                if findRasterValueAtPoint(pointFile, drainageArea, tempData) > 15420:
-                    if findClayValue() > 17:
-                        return "High-volume Snowmelt and Rain"
-                    else:
-                        return "GroundWater"
-                else:
-                    if findSlope() > 24:
-                        if findClayValue() > 23:
-                            if findSlope() < 31:
-                                return "Winter Storm"
-                            else:
-                                return "Flashy, Ephemeral Rain"
-                        else:
-                            return "Perennial Groundwater and Rain"
-                    else:
-                        return "Rain and Seasonal Groundwater"    
-    """
 
 
 def findRasterValueAtPoint(point, raster, tempData):
