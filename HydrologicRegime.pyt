@@ -55,10 +55,10 @@ class HydrologicRegimeTool(object):
             multiValue = False)
 
         param4 = arcpy.Parameter(
-            displayName = "Snow Depth",
-            name = "snowDepth",
+            displayName = "April Temperature",
+            name = "aprilTemp",
             datatype = "DERasterDataset",
-            parameterType = "Optional",
+            parameterType = "Required",
             direction = "Input",
             multiValue = False)
 

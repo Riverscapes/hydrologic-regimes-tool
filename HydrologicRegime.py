@@ -8,7 +8,7 @@ def main(streamNetwork,     # Path to the stream network file
         dem,                # Path to the DEM file
         marchPrecip,        # Path to file with precipitation in March
         janTemp,            # Path to file with temperature in January
-        snowDepth,          # Path to file with depth of snow
+        aprilTemp,          # Path to file with mean temperature in April
         minWinterTemp,      # Path to file with minimum winter temperature
         clippingRegion,     # Path to polygon to clip stream network to
         outputFolder,       # Path to where we want to put our output
@@ -38,12 +38,12 @@ def main(streamNetwork,     # Path to the stream network file
     else:
         clippedStreamNetwork = streamNetwork
 
-    reachArray = makeReaches(clippedStreamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData, testing)
+    reachArray = makeReaches(clippedStreamNetwork, dem, marchPrecip, janTemp, aprilTemp, minWinterTemp, tempData, testing)
 
     writeOutput(reachArray, outputDataPath, arcpy.Describe(clippedStreamNetwork).spatialReference, outputName)
 
 
-def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData, testing):
+def makeReaches(streamNetwork, dem, marchPrecip, janTemp, aprilTemp, minWinterTemp, tempData, testing):
     reaches = []
     numReaches = int(arcpy.GetCount_management(streamNetwork).getOutput(0))
     numReachesString = str(numReaches)
@@ -60,7 +60,7 @@ def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTe
         for i in range(10):
             arcpy.AddMessage("Creating Reach " + str(i+1) + " out of 10")
             row = polylineCursor.next()
-            classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData, sr, fileOne, fileTwo, testing)
+            classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, aprilTemp, minWinterTemp, tempData, sr, fileOne, fileTwo, testing)
 
             reach = ClassificationReach(row[0], classification)
             reaches.append(reach)
@@ -71,7 +71,7 @@ def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTe
             if i%100 == 0:
                 arcpy.AddMessage("Creating Reach " + str(i) + " out of " + numReachesString
                              + " (" + str((float(i)/float(numReaches))*100) + "% complete)")
-            classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData, sr, fileOne, fileTwo, testing)
+            classification = findClassification(row[0].firstPoint, dem, marchPrecip, janTemp, aprilTemp, minWinterTemp, tempData, sr, fileOne, fileTwo, testing)
             reach = ClassificationReach(row[0], classification)
             reaches.append(reach)
 
@@ -86,7 +86,7 @@ def makeReaches(streamNetwork, dem, marchPrecip, janTemp, snowDepth, minWinterTe
     return reaches
 
 
-def findClassification(point, dem, marchPrecip, janTemp, snowDepth, minWinterTemp, tempData, sr, txtFile, txtFileTwo, testing):
+def findClassification(point, dem, marchPrecip, janTemp, aprilTemp, minWinterTemp, tempData, sr, txtFile, txtFileTwo, testing):
     arcpy.env.workspace = tempData
     pointFile = arcpy.CreateFeatureclass_management(tempData, "point.shp", "POINT", "", "DISABLED", "DISABLED", sr)
     cursor = arcpy.da.InsertCursor(pointFile, ["SHAPE@"])
@@ -114,8 +114,7 @@ def findClassification(point, dem, marchPrecip, janTemp, snowDepth, minWinterTem
     else:
         if marchPrecipNum < 185.6:
             if findRasterValueAtPoint(pointFile, janTemp, tempData) >= -5: # Finds temp in January, branches based on that
-                #return "Groundwater or Snow-Rain"
-                if findRasterValueAtPoint(pointFile, snowDepth, tempData) < 1741: # We still can't find good data for snow depth
+                if findRasterValueAtPoint(pointFile, aprilTemp, tempData) < 6.26: # Finds temp in April, branch based on that
                     return "Groundwater"
                 else:
                     return "Snow-Rain"
@@ -130,7 +129,6 @@ def findClassification(point, dem, marchPrecip, janTemp, snowDepth, minWinterTem
 
 def findRasterValueAtPoint(point, raster, tempData):
     valuePoint = tempData + "\\rasterPoint.shp"
-    sr = arcpy.Describe(raster).SpatialReference
 
     arcpy.sa.ExtractValuesToPoints(point, raster, valuePoint)
     searchCursor = arcpy.da.SearchCursor(valuePoint, "RASTERVALU")
@@ -155,9 +153,6 @@ def findPolygonValueAtPoint(point, polygon, fieldName, tempData):
     return value
 
 
-def findSnowDepth(point, snowDepth, tempData):
-    #TODO: Write findSnowDepth()
-    return 1
 
 def writeOutput(reachArray, outputDataPath, spatialReference, outputName):
     arcpy.env.workspace = outputDataPath
