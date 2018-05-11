@@ -122,6 +122,7 @@ class HydrologicRegimeTool(object):
 
     def execute(self, parameters, messages):
         """The source code of the tool."""
+        reload(HydrologicRegime)
         HydrologicRegime.main(parameters[0].valueAsText,
             parameters[1].valueAsText,
             parameters[2].valueAsText,
