@@ -25,11 +25,6 @@ def main(streamNetwork,     # Path to the stream network file
         os.makedirs(outputFolder+"\\temporaryData")
     tempData = outputFolder + "\\temporaryData"
 
-    """Creates our output folder, where we'll put our final results"""
-    if not os.path.exists(outputFolder+"\HydrologicRegime"):
-        os.makedirs(outputFolder+"\HydrologicRegime")
-    outputDataPath = outputFolder+"\HydrologicRegime"
-
     """Clips our stream network to a clipping region, if necessary"""
     if clippingRegion is not None:
         clippedStreamNetwork = tempData + "\clippedStreamNetwork.shp"
@@ -39,8 +34,8 @@ def main(streamNetwork,     # Path to the stream network file
         clippedStreamNetwork = streamNetwork
 
     reachArray = makeReaches(clippedStreamNetwork, dem, marchPrecip, janTemp, aprilTemp, minWinterTemp, tempData, testing)
-
-    writeOutput(reachArray, outputDataPath, arcpy.Describe(clippedStreamNetwork).spatialReference, outputName)
+    sr = arcpy.Describe(clippedStreamNetwork).spatialReference
+    writeOutput(reachArray, outputFolder, sr, outputName, dem, marchPrecip, janTemp, aprilTemp, minWinterTemp)
 
 
 def makeReaches(streamNetwork, dem, marchPrecip, janTemp, aprilTemp, minWinterTemp, tempData, testing):
@@ -140,24 +135,76 @@ def findRasterValueAtPoint(point, raster, tempData):
     return value
 
 
-#def findRasterPointWithBuffer(point, raster, bufferSize, tempData):
-
-
 def findPolygonValueAtPoint(point, polygon, fieldName, tempData):
     valuePoint = tempData + "\polygonPoint.shp"
     arcpy.Intersect_analysis([point, polygon], valuePoint)
     searchCursor = arcpy.da.SearchCursor(valuePoint, fieldName)
     row = searchCursor.next()
-    value  = row[0]
+    value = row[0]
     del row, searchCursor
     return value
 
 
+def writeOutput(reachArray, outputFolder, sr, outputName, dem, marchPrecip, janTemp, aprilTemp, minWinterTemp):
+    projectFolder = makeFolder(outputFolder, "HydrologicRegimeProject")
+    writeInput(projectFolder, dem, marchPrecip, janTemp, aprilTemp, minWinterTemp)
+    writeAnalyses(projectFolder, reachArray, outputName, sr)
 
-def writeOutput(reachArray, outputDataPath, spatialReference, outputName):
-    arcpy.env.workspace = outputDataPath
 
-    outputShape = arcpy.CreateFeatureclass_management(outputDataPath, outputName+ ".shp", "POLYLINE", "", "DISABLED", "DISABLED", spatialReference)
+def writeInput(projectFolder, dem, marchPrecip, janTemp, aprilTemp, minWinterTemp):
+    """
+    Writes the input folder of the project
+    :param projectFolder: The path to the project folder
+    :param dem: The path to the DEM that we want to copy
+    :param marchPrecip: The path to the March precipitation raster that we want to copy
+    :param janTemp: The path to the January temperature raster that we want to copy
+    :param aprilTemp: The path to the April temperature raster that we want to copy
+    :param minWinterTemp: The path to the minimum winter temperature raster that we want to copy
+    :return:
+    """
+    inputFolder = makeFolder(projectFolder, "01_Inputs")
+
+    demFolder = makeFolder(inputFolder, "01_DEM")
+    copyGISFileWithName(demFolder, dem)
+
+    marchPrecipFolder = makeFolder(inputFolder, "02_MarchPrecip")
+    copyGISFileWithName(marchPrecipFolder, marchPrecip)
+
+    janTempFolder = makeFolder(inputFolder, "03_JanTemp")
+    copyGISFileWithName(janTempFolder, janTemp)
+
+    aprilTempFolder = makeFolder(inputFolder, "04_AprilTemp")
+    copyGISFileWithName(aprilTempFolder, aprilTemp)
+
+    minWinterTempFolder = makeFolder(inputFolder, "05_MinWinterTemp")
+    copyGISFileWithName(minWinterTempFolder, minWinterTemp)
+
+
+def copyGISFileWithName(pathToLocation, givenFile):
+    """
+    Copies the given file to the given location, retaining the name
+    :param pathToLocation: Where we want to put the file
+    :param givenFile: The file we want to copy
+    :return: None
+    """
+    givenFileCopy = os.path.join(pathToLocation, os.path.basename(givenFile))
+    arcpy.Copy_management(givenFile, givenFileCopy)
+
+
+
+def writeAnalyses(projectFolder, reachArray, outputName, sr):
+    """
+    Writes the analyses folder and the output of the tool run
+    :param projectFolder: Where we want to put stuff
+    :param reachArray: The array of reaches that we created with our tool
+    :param outputName: The name of what we want to put out
+    :param sr: The spatial reference of the stream network
+    :return: None
+    """
+    analysesFolder = makeFolder(projectFolder, "02_Analyses")
+    outputFolder = getOutputFolder(analysesFolder)
+
+    outputShape = arcpy.CreateFeatureclass_management(outputFolder, outputName+ ".shp", "POLYLINE", "", "DISABLED", "DISABLED", sr)
     arcpy.AddField_management(outputShape, "Regime", "TEXT")
 
     insertCursor = arcpy.da.InsertCursor(outputShape, ["SHAPE@", "Regime"])
@@ -165,7 +212,36 @@ def writeOutput(reachArray, outputDataPath, spatialReference, outputName):
         insertCursor.insertRow([reach.polyline, reach.classification])
     del insertCursor
 
-    tempLayer = outputDataPath + "\\" +  outputName+ "_lyr"
-    outputLayer = outputDataPath + "\\" +  outputName+ ".lyr"
+    tempLayer = outputFolder + "\\" +  outputName+ "_lyr"
+    outputLayer = outputFolder + "\\" +  outputName+ ".lyr"
     arcpy.MakeFeatureLayer_management(outputShape, tempLayer)
     arcpy.SaveToLayerFile_management(tempLayer, outputLayer)
+
+
+def getOutputFolder(analysesFolder):
+    """
+    Gets us the first untaken Output folder number, makes it, and returns it
+    :param analysesFolder: Where we're looking for output folders
+    :return: String
+    """
+    i = 1
+    outputFolder = os.path.join(analysesFolder, "Output_" + str(i))
+    while os.path.exists(outputFolder):
+        i += 1
+        outputFolder = os.path.join(analysesFolder, "Output_" + str(i))
+
+    os.mkdir(outputFolder)
+    return outputFolder
+
+
+def makeFolder(pathToLocation, newFolderName):
+    """
+    Makes a folder and returns the path to it
+    :param pathToLocation: Where we want to put the folder
+    :param newFolderName: What the folder will be called
+    :return: String
+    """
+    newFolder = os.path.join(pathToLocation, newFolderName)
+    if not os.path.exists(newFolder):
+        os.mkdir(newFolder)
+    return newFolder
